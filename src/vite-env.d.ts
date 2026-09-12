@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { LanDropApi } from '../electron/preload';
+import type { LanDropApi } from './preload-api';
 
 declare global {
   interface Window {

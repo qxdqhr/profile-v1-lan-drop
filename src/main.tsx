@@ -44,12 +44,20 @@ function App() {
   const [busy, setBusy] = useState(false);
 
   const reload = useCallback(async () => {
+    if (!window.lanDrop) {
+      setError('preload 未注入（window.lanDrop 缺失），请重启应用');
+      return;
+    }
     const s = (await window.lanDrop.getSnapshot()) as Snapshot;
     setSnap(s);
     setPeers(s.peers);
   }, []);
 
   useEffect(() => {
+    if (!window.lanDrop) {
+      setError('preload 未注入（window.lanDrop 缺失），请重启应用');
+      return;
+    }
     void reload();
     void window.lanDrop.getConnectQr().then(setQr);
     const offPeers = window.lanDrop.onPeers(setPeers);
@@ -117,7 +125,17 @@ function App() {
   }
 
   if (!snap) {
-    return <div className="app loading">加载中…</div>;
+    return (
+      <div className="app loading">
+        {error ? (
+          <div className="banner error" role="alert">
+            {error}
+          </div>
+        ) : (
+          '加载中…'
+        )}
+      </div>
+    );
   }
 
   return (

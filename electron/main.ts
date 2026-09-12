@@ -43,9 +43,10 @@ function createWindow() {
     minHeight: 560,
     show: false,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
     },
     backgroundColor: '#0f1419',
     title: BRAND.appName,
@@ -66,13 +67,16 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // Drag-drop files from OS onto window → renderer handles via HTML5 DnD
-  mainWindow.webContents.on('will-navigate', (e) => e.preventDefault());
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    console.error('[LanDrop] did-fail-load', { code, desc, url });
+  });
 
   if (isDev) {
     void mainWindow.loadURL(
       process.env.VITE_DEV_SERVER_URL || 'http://localhost:5175',
     );
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     void mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
