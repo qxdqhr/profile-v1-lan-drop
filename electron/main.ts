@@ -7,6 +7,7 @@ import {
   type MenuItemConstructorOptions,
 } from 'electron';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createTrayIcon } from './tray-icon';
 import { loadOrCreateIdentity } from './cert/identity';
 import { loadSettings, updateSettings } from './settings/store';
@@ -15,6 +16,9 @@ import { ReceiveServer } from './transfer/receive-server';
 import { SendClient } from './transfer/send-client';
 import { registerIpc } from './ipc/register';
 import { BRAND } from '../shared/brand';
+
+/** vite-plugin-electron 产出 ESM，无内置 __dirname */
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const isDev = !app.isPackaged;
 
