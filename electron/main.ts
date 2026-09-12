@@ -6,14 +6,20 @@ import {
   nativeImage,
   type MenuItemConstructorOptions,
 } from 'electron';
-import path from 'path';
+import path from 'node:path';
 import { createTrayIcon } from './tray-icon';
+import { loadOrCreateIdentity } from './cert/identity';
+import { loadSettings, updateSettings } from './settings/store';
+import { DiscoveryService } from './discovery/service';
+import { ReceiveServer } from './transfer/receive-server';
+import { SendClient } from './transfer/send-client';
+import { registerIpc } from './ipc/register';
+import { BRAND } from '../shared/brand';
 
 const isDev = !app.isPackaged;
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
-/** 用户点托盘「退出」时允许真正退出 */
 let isQuitting = false;
 
 const gotLock = app.requestSingleInstanceLock();
@@ -27,10 +33,10 @@ if (!gotLock) {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 960,
-    height: 640,
-    minWidth: 720,
-    minHeight: 480,
+    width: 1040,
+    height: 720,
+    minWidth: 800,
+    minHeight: 560,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -38,7 +44,7 @@ function createWindow() {
       nodeIntegration: false,
     },
     backgroundColor: '#0f1419',
-    title: 'LanDrop',
+    title: BRAND.appName,
   });
 
   mainWindow.on('ready-to-show', () => {
@@ -55,6 +61,9 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // Drag-drop files from OS onto window → renderer handles via HTML5 DnD
+  mainWindow.webContents.on('will-navigate', (e) => e.preventDefault());
 
   if (isDev) {
     void mainWindow.loadURL(
@@ -82,40 +91,74 @@ function quitApp() {
   app.quit();
 }
 
+function buildTrayMenu(): Menu {
+  const paused = loadSettings().receivePaused;
+  const template: MenuItemConstructorOptions[] = [
+    { label: '显示主窗口', click: () => showMainWindow() },
+    {
+      label: paused ? '恢复接收' : '暂停接收',
+      click: () => {
+        updateSettings({ receivePaused: !loadSettings().receivePaused });
+        refreshTrayMenu();
+        mainWindow?.webContents.send('landrop:settingsChanged');
+      },
+    },
+    { type: 'separator' },
+    { label: `退出 ${BRAND.appName}`, click: () => quitApp() },
+  ];
+  return Menu.buildFromTemplate(template);
+}
+
+function refreshTrayMenu() {
+  tray?.setContextMenu(buildTrayMenu());
+}
+
 function createTray() {
   const icon = createTrayIcon();
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
-  tray.setToolTip('LanDrop');
-
-  const template: MenuItemConstructorOptions[] = [
-    {
-      label: '显示主窗口',
-      click: () => showMainWindow(),
-    },
-    { type: 'separator' },
-    {
-      label: '退出 LanDrop',
-      click: () => quitApp(),
-    },
-  ];
-
-  tray.setContextMenu(Menu.buildFromTemplate(template));
+  tray.setToolTip(BRAND.appName);
+  refreshTrayMenu();
   tray.on('double-click', () => showMainWindow());
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  const identity = await loadOrCreateIdentity();
+  loadSettings();
+
+  const discovery = new DiscoveryService(identity);
+  const receiver = new ReceiveServer(identity, () => mainWindow);
+  const sender = new SendClient(identity);
+
+  registerIpc({
+    identity,
+    discovery,
+    receiver,
+    sender,
+    getWindow: () => mainWindow,
+    refreshTrayMenu,
+  });
+
   createTray();
   createWindow();
+
+  discovery.start();
+  try {
+    await receiver.start();
+  } catch (err) {
+    console.error('[LanDrop] HTTPS server failed to start', err);
+  }
 
   app.on('activate', () => {
     showMainWindow();
   });
-});
 
-app.on('before-quit', () => {
-  isQuitting = true;
+  app.on('before-quit', () => {
+    isQuitting = true;
+    discovery.stop();
+    void receiver.stop();
+  });
 });
 
 app.on('window-all-closed', () => {
-  // 托盘常驻：不因关窗退出（macOS / Win / Linux 一致）
+  // tray keeps process alive
 });

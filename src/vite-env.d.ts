@@ -1,17 +1,10 @@
 /// <reference types="vite/client" />
 
-interface LanDropBridge {
-  platform: NodeJS.Platform;
-  versions: {
-    electron: string;
-    node: string;
-    chrome: string;
-  };
-}
+import type { LanDropApi } from '../electron/preload';
 
 declare global {
   interface Window {
-    lanDrop: LanDropBridge;
+    lanDrop: LanDropApi;
   }
 }
 
