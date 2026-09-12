@@ -14,7 +14,7 @@ import type {
 } from '../../shared/protocol';
 import { shortFingerprint } from '../../shared/protocol';
 import type { DeviceIdentity } from '../cert/identity';
-import { loadSettings } from '../settings/store';
+import { loadSettings, updateSettings } from '../settings/store';
 import { safeResolveDownloadPath } from './paths';
 
 type AcceptFn = (req: PrepareRequest) => Promise<'accept' | 'reject'>;
@@ -83,8 +83,6 @@ export class ReceiveServer extends EventEmitter {
           console.warn(
             `[LanDrop] HTTPS port ${preferred} busy, bound to ${bound}`,
           );
-          // keep settings.port in sync for discovery announce
-          const { updateSettings } = await import('../settings/store');
           updateSettings({ httpsPort: bound });
         }
         return;
