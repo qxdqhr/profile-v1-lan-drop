@@ -76,7 +76,10 @@ function createWindow() {
     void mainWindow.loadURL(
       process.env.VITE_DEV_SERVER_URL || 'http://localhost:5175',
     );
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    // Autofill.* DevTools 噪声可忽略；需要调试时设 LANDROP_DEBUG=1
+    if (process.env.LANDROP_DEBUG === '1') {
+      mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
   } else {
     void mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
