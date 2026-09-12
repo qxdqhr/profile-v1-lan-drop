@@ -12,7 +12,8 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "dist:dir": "pnpm build && electron-builder --dir",
     "dist:mac": "pnpm build && electron-builder --mac --dir",
-    "dist:win": "pnpm build && electron-builder --win --dir",
+    "dist:win": "pnpm build && electron-builder --win portable --x64",
+    "dist:win:dir": "pnpm build && electron-builder --win --x64 --dir",
     "dist:linux": "pnpm build && electron-builder --linux --dir"
   },
   "dependencies": {
@@ -50,7 +51,13 @@
       "target": ["dir"]
     },
     "win": {
-      "target": ["dir"]
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
     },
     "linux": {
       "target": ["dir"],

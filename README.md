@@ -23,14 +23,28 @@ pnpm install
 pnpm dev:lan-drop
 ```
 
-## 打包冒烟（当前平台目录产物）
+## 打包冒烟
+
+当前平台目录产物：
 
 ```bash
 cd app_desktop/lan-drop
 pnpm dist:dir
 ```
 
-产物在 `release/`（未签名安装包；CI/发布后补）。
+**Windows 便携包**（可在 macOS 上交叉编译 x64 portable `.exe`）：
+
+```bash
+cd app_desktop/lan-drop
+# 国内网络建议加镜像，否则下载 Electron/win 工具链容易卡住
+export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
+export ELECTRON_BUILDER_BINARIES_MIRROR="https://npmmirror.com/mirrors/electron-builder-binaries/"
+export CSC_IDENTITY_AUTO_DISCOVERY=false
+pnpm dist:win
+```
+
+产物：`release/LanDrop-0.1.0-win-x64.exe`（免安装便携包，拷到 Windows 直接运行）。
+未签名安装包；正式发布再补图标与签名。
 
 ## 包名
 
