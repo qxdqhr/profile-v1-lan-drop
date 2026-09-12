@@ -58,10 +58,52 @@ export class ReceiveServer extends EventEmitter {
       },
     );
 
-    await new Promise<void>((resolve, reject) => {
-      this.server!.once('error', reject);
-      this.server!.listen(settings.httpsPort, '0.0.0.0', () => resolve());
-    });
+    const preferred = settings.httpsPort;
+    const candidates = [preferred, preferred + 1, preferred + 2, preferred + 3, 0];
+    let lastErr: unknown;
+    for (const port of candidates) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const onError = (err: Error) => {
+            this.server?.off('listening', onListening);
+            reject(err);
+          };
+          const onListening = () => {
+            this.server?.off('error', onError);
+            resolve();
+          };
+          this.server!.once('error', onError);
+          this.server!.once('listening', onListening);
+          this.server!.listen(port, '0.0.0.0');
+        });
+        const addr = this.server.address();
+        const bound =
+          addr && typeof addr === 'object' ? addr.port : port;
+        if (bound !== preferred) {
+          console.warn(
+            `[LanDrop] HTTPS port ${preferred} busy, bound to ${bound}`,
+          );
+          // keep settings.port in sync for discovery announce
+          const { updateSettings } = await import('../settings/store');
+          updateSettings({ httpsPort: bound });
+        }
+        return;
+      } catch (err) {
+        lastErr = err;
+        try {
+          this.server.close();
+        } catch {
+          /* ignore */
+        }
+        this.server = https.createServer(
+          { key: this.identity.keyPem, cert: this.identity.certPem },
+          (req, res) => {
+            void this.handle(req, res);
+          },
+        );
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
   }
 
   async stop(): Promise<void> {

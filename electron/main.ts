@@ -26,13 +26,17 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
-  app.quit();
-} else {
-  app.on('second-instance', () => {
-    showMainWindow();
-  });
+// 生产环境单实例；开发模式必须关掉，否则 vite 热重启抢锁失败会立刻退出并拖垮 pnpm dev
+if (!isDev) {
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    console.error(`[${BRAND.appName}] already running`);
+    app.quit();
+  } else {
+    app.on('second-instance', () => {
+      showMainWindow();
+    });
+  }
 }
 
 function createWindow() {
@@ -133,41 +137,46 @@ function createTray() {
 }
 
 app.whenReady().then(async () => {
-  const identity = await loadOrCreateIdentity();
-  loadSettings();
-
-  const discovery = new DiscoveryService(identity);
-  const receiver = new ReceiveServer(identity, () => mainWindow);
-  const sender = new SendClient(identity);
-
-  registerIpc({
-    identity,
-    discovery,
-    receiver,
-    sender,
-    getWindow: () => mainWindow,
-    refreshTrayMenu,
-  });
-
-  createTray();
-  createWindow();
-
-  discovery.start();
   try {
-    await receiver.start();
+    const identity = await loadOrCreateIdentity();
+    loadSettings();
+
+    const discovery = new DiscoveryService(identity);
+    const receiver = new ReceiveServer(identity, () => mainWindow);
+    const sender = new SendClient(identity);
+
+    registerIpc({
+      identity,
+      discovery,
+      receiver,
+      sender,
+      getWindow: () => mainWindow,
+      refreshTrayMenu,
+    });
+
+    createTray();
+    createWindow();
+
+    discovery.start();
+    try {
+      await receiver.start();
+    } catch (err) {
+      console.error('[LanDrop] HTTPS server failed to start', err);
+    }
+
+    app.on('activate', () => {
+      showMainWindow();
+    });
+
+    app.on('before-quit', () => {
+      isQuitting = true;
+      discovery.stop();
+      void receiver.stop();
+    });
   } catch (err) {
-    console.error('[LanDrop] HTTPS server failed to start', err);
+    console.error('[LanDrop] startup failed', err);
+    app.quit();
   }
-
-  app.on('activate', () => {
-    showMainWindow();
-  });
-
-  app.on('before-quit', () => {
-    isQuitting = true;
-    discovery.stop();
-    void receiver.stop();
-  });
 });
 
 app.on('window-all-closed', () => {
