@@ -15,10 +15,12 @@
 
 ## 发现
 
-1. 每台设备周期性向组播组发送 JSON `PeerAnnounce`：
-   - `v`, `deviceId`, `displayName`, `port`, `fingerprint`, `os`, `ip?`
-2. 监听方更新 peer 表；超过 TTL（默认 8s）且非手动添加的条目剔除。
-3. 手动添加：对 `GET /landrop/v1/info` 探测后写入 peer（`manual: true`）。
+1. 周期性发送 JSON `PeerAnnounce`（`v`, `deviceId`, `displayName`, `port`, `fingerprint`, `os`, `ip`）：
+   - **UDP 组播** `239.255.90.90:41234`（按本地各网卡 `setMulticastInterface` 分别发送）
+   - **子网广播**（各网卡 broadcast + `255.255.255.255`）作兜底
+2. 监听绑定 `0.0.0.0:41234`，并在各局域网网卡上 `addMembership`
+3. 超时 TTL（默认 8s）剔除非手动条目
+4. 手动添加：对 `GET /landrop/v1/info` 探测后写入 peer（`manual: true`）
 
 ## HTTPS API
 

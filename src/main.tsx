@@ -441,11 +441,15 @@ function App() {
           <ul className="help-list">
             <li>两端都需安装并运行 {snap.brand.appName}（托盘常驻即可）。</li>
             <li>
-              默认组播 {snap.brand.multicastAddress}:{snap.brand.multicastPort}，HTTPS 端口{' '}
-              {snap.brand.defaultHttpsPort}（可在设置修改）。请在防火墙放行 UDP/TCP。
+              自动发现使用 UDP 组播 {snap.brand.multicastAddress}:{snap.brand.multicastPort}{' '}
+              + 子网广播；HTTPS 端口 {snap.brand.defaultHttpsPort}。请在防火墙放行这些 UDP/TCP 端口。
             </li>
-            <li>若路由器开启 AP / 客户端隔离，设备将无法互发现，请用「连接」页 IP 或链接兜底。</li>
-            <li>多网卡或 VPN 导致连错网络时，在设置中手动选择局域网网卡。</li>
+            <li>
+              Windows：首次运行若弹防火墙，勾选「专用网络」允许；或在「允许应用通过防火墙」中启用
+              LanDrop。
+            </li>
+            <li>若路由器开启 AP / 客户端隔离，将无法互发现，请用「连接」页填对方 IP（设置页可看本机 IP）。</li>
+            <li>多网卡或 VPN 时，在设置中手动选择与对方同一网段的网卡。</li>
             <li>接收前会弹窗确认；传输使用自签 HTTPS，可用指纹核对设备。</li>
             <li>同时仅支持一个接收会话；对方忙时请稍后重试。</li>
           </ul>
